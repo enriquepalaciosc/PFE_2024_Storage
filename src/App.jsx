@@ -1,142 +1,139 @@
 import { useState, useEffect } from 'react'
 
 function App() {
+  // Estados para manejar la lista de usuarios y los campos del formulario
   const [usuarios, setUsuarios] = useState([])
-  const [nuevoUsuarioId, setNuevoUsuarioId] = useState(1)
+  const [nuevoUsuarioId, setNuevoUsuarioId] = useState('')
   const [nuevoUsuarioNombre, setNuevoUsuarioNombre] = useState('')
+  const [editandoUsuario, setEditandoUsuario] = useState(null)
 
-  /* función que administre cada vez que el usuario ingrese algo
-     al input y actualice automáticamente el valor de "nuevoUsuarioId"
-     cada vez que se escribe o elimina algo de la caja de entrada.
-     _IMPORTANTE_: Recordar que el método handle debe recibir
-     el evento (e)
-   */
+  // Manejador para actualizar el estado del ID cuando se escribe en el input
   const handleNuevoUsuario = (e) => {
-    // cambia el nuevo id al estado nuevoUsuarioID cada vez que escribe
-    // algo en la caja, este valor que escribe el usuario
-    // se obtiene desde e.target.value
     setNuevoUsuarioId(e.target.value)
+    /* Recordar que e.target.value es para obtener lo que tiene escrito
+       un input, y sólo funciona en este tipo de controles (no en un botón p.ej.)
+     */
   }
 
-  /* Se aplicará la misma lógica que el método anterior para el handle */
+  // Manejador para actualizar el estado del nombre cuando se escribe en el input
   const handleNuevoNombre = (e) => {
     setNuevoUsuarioNombre(e.target.value)
   }
 
-  /* Crear función para que cuando se presione el botón
-     obtenga el id y nombre desde los estados correspondientes
-     (nuevoUsuarioID, nuevoUsuarioNombre) y los añade al estado llamado usuarios
-   */
+  // Función para agregar un nuevo usuario
   const handleAgregarUsuario = () => {
-    // creamos nuevo objeto con los datos registrados
-    let nuevoUsuario = {
+    // Crear objeto con los datos del nuevo usuario
+    const nuevoUsuario = {
       id: nuevoUsuarioId,
       nombre: nuevoUsuarioNombre
     }
-    // Impresión para validación
     console.log('Datos del usuario nuevo:', nuevoUsuario)
 
-    // Actualizar el estado de usuarios para añadir el nuevo
-    let nuevoArreglo = usuarios // usuarios es del tipo arreglo
-    nuevoArreglo.push(nuevoUsuario) // añado nuevo usuario
-    setUsuarios(nuevoArreglo) // reemplazar arreglo por el nuevo actualizado
-
-    // Guardar el resultado a localStorage (key: usuarios)
-    // hay que convertir el arreglo de usuarios a JSON (JSON stringify)
-    let resultadoJson = JSON.stringify(nuevoArreglo)
-    localStorage.setItem("usuarios", resultadoJson)
-
-    console.log("Actuales usuarios", nuevoArreglo)
-
-  }
-
-  const handleEliminarUsuario = (idUsuario) => {
-    // código para obtener un objeto según buscar por su atributo id
-    /* let resultado = usuarios.filter(objeto => {
-      return objeto.id === idUsuario
-    }) */
-
-    // Inverso al anterior, en vez de devolver un solo objeto
-    // encontrado, devuelve todos los elementos del arreglo
-    // pero no el que sea encontrado con el idUsuario
-    // ingresado para su eliminación
-    let resultadosEliminados = usuarios.filter(objeto => {
-      return objeto.id !== idUsuario
+    // Actualizar el estado de usuarios y guardar en localStorage
+    setUsuarios(prev => { // prev se ocupa para obtener el antiguo valor del estado "usuarios"
+      const nuevoArreglo = [...prev, nuevoUsuario] // Crear nuevo array con todos los usuarios anteriores más el nuevo usando desestructuración
+      localStorage.setItem("usuarios", JSON.stringify(nuevoArreglo)) // Guardar en localStorage
+      return nuevoArreglo // Actualizar el estado, se modificará el estado "usuarios"
     })
 
-    // actualizar el estado de usuarios
-    setUsuarios(resultadosEliminados)
-
-    // actualizar el almacenamiento de localStorage
-    // debemos convertir el arreglo a JSON con JSON stringify
-    let nuevoArreglo = JSON.stringify(resultadosEliminados)
-    localStorage.setItem("usuarios", nuevoArreglo)
+    // Limpiar los campos del formulario después de agregar
+    setNuevoUsuarioId('')
+    setNuevoUsuarioNombre('')
   }
 
-  /* gatillar una acción cuando la página se termine de cargar
-     OBJ UseEffect: Verificar que existan o no existan usuarios
-     almacenados previamente en el localStorage (el almacenamiento
-     de la página)
-   */
+  // Función para eliminar un usuario
+  const handleEliminarUsuario = (idUsuario) => {
+    setUsuarios(prev => { // prev se ocupa para obtener el antiguo valor del estado "usuarios"
+      // Filtrar el array para excluir el usuario con el ID especificado
+      const resultadosEliminados = prev.filter(objeto => objeto.id !== idUsuario)
+      localStorage.setItem("usuarios", JSON.stringify(resultadosEliminados)) // Actualizar localStorage
+      return resultadosEliminados // Actualizar el estado
+    })
+  }
+
+  // Función para iniciar la edición de un usuario
+  const handleEditarUsuario = (usuario) => {
+    setEditandoUsuario(usuario) // Marcar qué usuario se está editando
+    setNuevoUsuarioId(usuario.id) // Llenar el campo de ID con el valor actual
+    setNuevoUsuarioNombre(usuario.nombre) // Llenar el campo de nombre con el valor actual
+  }
+
+  // Función para guardar los cambios de la edición
+  const handleGuardarEdicion = () => {
+    setUsuarios(prev => {
+      // Mapear a través de los usuarios, actualizando el que se está editando
+      const usuariosActualizados = prev.map(u =>
+          u.id === editandoUsuario.id ? { ...u, id: nuevoUsuarioId, nombre: nuevoUsuarioNombre } : u
+      )
+      localStorage.setItem("usuarios", JSON.stringify(usuariosActualizados)) // Actualizar localStorage
+      return usuariosActualizados // Actualizar el estado
+    })
+    // Resetear el estado de edición y limpiar los campos
+    setEditandoUsuario(null)
+    setNuevoUsuarioId('')
+    setNuevoUsuarioNombre('')
+  }
+
+  // Función para cancelar la edición
+  const handleCancelarEdicion = () => {
+    setEditandoUsuario(null) // Quitar el marcador de edición
+    setNuevoUsuarioId('') // Limpiar campo de ID
+    setNuevoUsuarioNombre('') // Limpiar campo de nombre
+  }
+
+  // Efecto que se ejecuta al montar el componente para cargar usuarios desde localStorage
   useEffect(() => {
-    // verificación para saber si tiene algo el localStorage
-    console.log(localStorage.getItem("usuarios"))
-    /* verificamos si tenemos usuarios guardados en el localStorage,
-       para esto, intentaremos primero saber si existe la clave "usuarios"
-     */
-    if (localStorage.getItem("usuarios") !== null) {
-      // crear variable usuarios, que obtenga desde localStorage("usuarios")
-      // y los convierta a JSON (con JSON parse)
-      let usuariosAlmacenados = JSON.parse(localStorage.getItem("usuarios"))
-      setUsuarios(usuariosAlmacenados)
-      console.log("Actualizados los usuarios almacenados desde localStorage")
-    }
-    /* el else se gatillará en caso de que no exista "usuarios"
-       en el localStorage como clave
-     */
-    else
-    {
-      console.log("no existen usuarios en el localStorage('usuarios')")
-    }
-  }, [])
+    const usuariosAlmacenados = JSON.parse(localStorage.getItem("usuarios") || "[]")
+    setUsuarios(usuariosAlmacenados)
+    console.log("Usuarios cargados desde localStorage:", usuariosAlmacenados)
+  }, []) // El array vacío significa que este efecto solo se ejecuta una vez al montar el componente
 
   return (
-    <div style={{ padding: '10px' }}>
-      {/* Añadir usuarios */}
-      <div>
-        <form action="#">
-          <label htmlFor="id_usuario">ID Usuario</label><br />
-          <input
-              type="number"
-              value={nuevoUsuarioId}
-              onChange={handleNuevoUsuario}
-              name="id_usuario"
-          /><br /><br />
-          <label htmlFor="nombre_usuario">Nombre usuario</label><br />
-          <input type="text"
-                 value={nuevoUsuarioNombre}
-                 onChange={handleNuevoNombre}
-                 name="nombre_usuario"
-                 placeholder="Ingrese un usuario"
-          /><br /><br />
-          <button type="button"
-                  onClick={handleAgregarUsuario}>
-            Añadir usuario
-          </button>
-        </form>
-        <hr />
+      <div style={{ padding: '10px' }}>
+        {/* Formulario para agregar/editar usuarios */}
+        <div>
+          <form onSubmit={(e) => e.preventDefault()}> {/* Prevenir envío del formulario */}
+            <label htmlFor="id_usuario">ID Usuario</label><br />
+            <input
+                type="number"
+                value={nuevoUsuarioId}
+                onChange={handleNuevoUsuario}
+                name="id_usuario"
+            /><br /><br />
+            <label htmlFor="nombre_usuario">Nombre usuario</label><br />
+            <input
+                type="text"
+                value={nuevoUsuarioNombre}
+                onChange={handleNuevoNombre}
+                name="nombre_usuario"
+                placeholder="Ingrese un usuario"
+            /><br /><br />
+            {/* Mostrar botones diferentes dependiendo de si se está editando o agregando */}
+            {editandoUsuario ? (
+                <>
+                  <button type="button" style={{ marginRight: '10px' }} onClick={handleGuardarEdicion}>Guardar Cambios</button>
+                  <button type="button" onClick={handleCancelarEdicion}>Cancelar</button>
+                </>
+            ) : (
+                <button type="button" onClick={handleAgregarUsuario}>Añadir usuario</button>
+            )}
+          </form>
+          <hr />
+        </div>
+        {/* Lista de usuarios */}
+        <div>
+          <h3>Lista de usuarios</h3>
+          <ul>
+            {usuarios.map((usu) => (
+                <li key={usu.id}>
+                  ID: {usu.id}, NOMBRE: {usu.nombre}
+                  <button type="button" onClick={() => handleEditarUsuario(usu)} style={{ marginLeft: '10px', marginRight: '10px' }}>Editar</button>
+                  <button type="button" onClick={() => handleEliminarUsuario(usu.id)}>Eliminar</button>
+                </li>
+            ))}
+          </ul>
+        </div>
       </div>
-      {/* Listar usuarios (editar / eliminar) */}
-      <div>
-        <h3>Lista de usuarios</h3>
-        <ul>
-          {usuarios.map((usu, indice) => {
-              return <li key={indice}>ID: {usu.id}, NOMBRE: {usu.nombre} <button type="button" onClick={() => { handleEliminarUsuario(usu.id) } }>Eliminar</button></li>
-          })}
-        </ul>
-
-      </div>
-    </div>
   )
 }
 
